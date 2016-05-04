@@ -71,15 +71,25 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+        Log.d(getPackageName(), "Data is null: " + ((data == null) ? true : false));
+        Log.d(getPackageName(), "Data get data is null" + ((data.getData() == null) ? true : false));
+
+        if (resultCode == RESULT_OK && data != null) {
             Uri uri = data.getData();
 
             if (requestCode == PICK_IMAGE || requestCode == TAKE_PHOTO) {
                 try {
-                    Bitmap bm = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+                    Bitmap bm = null;
 
-                    if (requestCode == TAKE_PHOTO)
-                        bm = ImageUtil.checkPhoto(this, uri, bm);
+                    if (uri == null) {
+                        if (data.hasExtra("data"))
+                            bm = (Bitmap) data.getExtras().get("data");
+                    } else {
+                        bm = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+
+                        if (requestCode == TAKE_PHOTO)
+                            bm = ImageUtil.checkPhoto(this, uri, bm);
+                    }
 
                     init(bm);
                 } catch (IOException e) {
