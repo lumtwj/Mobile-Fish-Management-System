@@ -6,6 +6,7 @@ import android.util.Log;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
 public class Classifier {
@@ -31,6 +32,24 @@ public class Classifier {
 //    public static final int FISH_TYPE_BIG_EYE = 4;
 
     private static final int CONFIRMATION_SIZE = 5;
+
+    public static HashMap<Integer, Double> normalizeFish(HashMap<Integer, ArrayList<Double>> verticals) {
+
+        // Verticals represent all the y values at a single x
+        // Find widest y extent of each x
+        HashMap<Integer, Double> diffMap = new HashMap<>();
+
+        for(Integer k: verticals.keySet()) {
+            if(verticals.get(k).size() > 2) {
+                double minimumY = Collections.min(verticals.get(k));
+                double maximumY = Collections.max(verticals.get(k));
+                double diff = maximumY-minimumY;
+                diffMap.put(k, diff);
+            }
+        }
+
+        return diffMap;
+    }
 
     public static int isSwordFish(HashMap<Integer, Double> diffMap, double minX, double maxX) {
 

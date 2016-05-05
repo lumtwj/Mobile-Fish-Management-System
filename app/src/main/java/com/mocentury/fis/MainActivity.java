@@ -11,6 +11,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ViewFlipper;
 
+import com.mocentury.fis.util.CVUtil;
 import com.mocentury.fis.util.Classifier;
 import com.mocentury.fis.util.ImageUtil;
 import com.mocentury.fis.util.LocationUtil;
@@ -21,13 +22,12 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.Point;
+import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -129,48 +129,21 @@ public class MainActivity extends AppCompatActivity {
         //
 
         // Compute reduced/optimized bounds for the image after edge detection
-        double minX = width;
-        double maxX = 0.0;
-        double minY = height;
-        double maxY = 0.0;
-        HashMap<Integer, ArrayList<Double>> bitMap = new HashMap<>();
+        CVUtil.processContours(contours, width, height);
+        HashMap<Integer, ArrayList<Double>> verticals = CVUtil.getVerticals();
+        Rect bounds = CVUtil.getBounds();
+        int minX = bounds.x;
+        int maxX = bounds.x+bounds.width;
+        int minY = bounds.y;
+        int maxY = bounds.y+bounds.height;
 
-        for (MatOfPoint pt : contours) {
-            List<Point> list = pt.toList();
+        // Find widest y extent of each x
+        HashMap<Integer, Double> normalizedFish = Classifier.normalizeFish(verticals);
 
-            for (Point p : list) {
-                if (p.x < minX) minX = p.x;
-                if (p.x > maxX) maxX = p.x;
-                if (p.y < minY) minY = p.y;
-                if (p.y > maxY) maxY = p.y;
-
-                // Individual x value and its y values (1-to-many)
-                int key = (Double.valueOf(p.x)).intValue();
-                ArrayList<Double> value = bitMap.get(key);
-
-                if (value != null) value.add(p.y);
-                else {
-                    value = new ArrayList<>();
-                    bitMap.put(key, value);
-                }
-            }
-        }
-
-        HashMap<Integer, Double> diffMap = new HashMap<>();
-
-        for (Integer k : bitMap.keySet()) {
-            if (bitMap.get(k).size() > 2) {
-                double minimumY = Collections.min(bitMap.get(k));
-                double maximumY = Collections.max(bitMap.get(k));
-                double diff = maximumY - minimumY;
-                diffMap.put(k, diff);
-            }
-        }
-
-        int tail_pixel = Classifier.getTailSegment(diffMap, maxX);
+        int tail_pixel = Classifier.getTailSegment(normalizedFish, maxX);
 
         int classType;
-        int billend = Classifier.isSwordFish(diffMap, minX, maxX);
+        int billend = Classifier.isSwordFish(normalizedFish, minX, maxX);
         // Swordfish checking. Zero: Not swordfish, Non-zero: Swordfish
         if (billend != 0) {
             classType = Classifier.FISH_TYPE_SWORDFISH;
@@ -192,7 +165,6 @@ public class MainActivity extends AppCompatActivity {
 
         Log.d(getPackageName(), "Fish type: " + Classifier.getFishString(classType));
         Log.d(getPackageName(), "Fish length: " + computeLength(fork_pixel) + " inch");
-
 
         ivTest.setImageBitmap(input);
         new LocationUtil(this, Classifier.getFishString(classType), computeLength(fork_pixel)).connect();
